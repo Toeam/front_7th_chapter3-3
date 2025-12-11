@@ -10,7 +10,7 @@ export const useCommentCreate = () => {
 
   return useMutation({
     mutationFn: (comment: CreateCommentDto) => commentApi.createComment(comment),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // 해당 게시물의 댓글 목록 쿼리 무효화
       queryClient.invalidateQueries({ queryKey: commentKeys.list(variables.postId) })
     },

@@ -11,7 +11,7 @@ export const useCommentLike = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, likes, postId }: { id: number; likes: number; postId: number }) =>
+    mutationFn: ({ id, likes }: { id: number; likes: number; postId: number }) =>
       commentApi.likeComment(id, likes),
     // 낙관적 업데이트: 서버 응답 전에 UI 업데이트
     onMutate: async ({ id, likes, postId }) => {

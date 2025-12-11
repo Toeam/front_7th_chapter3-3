@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { commentApi, type UpdateCommentDto } from '../../../entities/comment/api'
 import { commentKeys } from '../../../shared/lib'
-import type { Comment } from '../../../entities/comment'
 
 /**
  * 댓글 수정 기능

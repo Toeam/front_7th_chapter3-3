@@ -9,7 +9,7 @@ export const useCommentDelete = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, postId }: { id: number; postId: number }) =>
+    mutationFn: ({ id }: { id: number; postId: number }) =>
       commentApi.deleteComment(id),
     onSuccess: (_, variables) => {
       // 해당 게시물의 댓글 목록 쿼리 무효화

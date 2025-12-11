@@ -36,7 +36,7 @@ export const usePostDelete = () => {
       return { previousQueries }
     },
     // 에러 발생 시 롤백
-    onError: (error, id, context) => {
+    onError: (error, _id, context) => {
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)

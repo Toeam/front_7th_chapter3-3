@@ -1,7 +1,7 @@
-import type { PostAuthor } from '../model/types'
+import type { PostAuthor as PostAuthorType } from '../model/types'
 
 interface PostAuthorProps {
-  author: PostAuthor
+  author: PostAuthorType
   onClick?: () => void
 }
 
