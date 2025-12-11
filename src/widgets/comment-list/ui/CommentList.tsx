@@ -1,6 +1,6 @@
-import { Plus, ThumbsUp, Edit2, Trash2 } from "lucide-react"
+import { Plus } from "lucide-react"
 import type { Comment } from '../../../entities/comment'
-import { highlightText } from '../../../shared/lib'
+import { CommentItem } from '../../../entities/comment/ui'
 import { Button } from "../../../shared/ui"
 
 interface CommentListProps {
@@ -16,6 +16,7 @@ interface CommentListProps {
 /**
  * 댓글 목록 위젯
  * 게시물의 댓글을 표시하고 관리합니다.
+ * Entities UI 컴포넌트를 사용하여 구조를 개선했습니다.
  */
 export const CommentList = ({
   comments,
@@ -37,27 +38,17 @@ export const CommentList = ({
       </div>
       <div className="space-y-1">
         {comments.map((comment) => (
-          <div key={comment.id} className="flex items-center justify-between text-sm border-b pb-1">
-            <div className="flex items-center space-x-2 overflow-hidden">
-              <span className="font-medium truncate">{comment.user.username}:</span>
-              <span className="truncate">{highlightText(comment.body, searchQuery)}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Button variant="ghost" size="sm" onClick={() => onLikeComment(comment.id, postId)}>
-                <ThumbsUp className="w-3 h-3" />
-                <span className="ml-1 text-xs">{comment.likes}</span>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onEditComment(comment)}>
-                <Edit2 className="w-3 h-3" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onDeleteComment(comment.id, postId)}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            postId={postId}
+            searchQuery={searchQuery}
+            onLikeComment={onLikeComment}
+            onEditComment={onEditComment}
+            onDeleteComment={onDeleteComment}
+          />
         ))}
       </div>
     </div>
   )
 }
-

@@ -10,13 +10,11 @@ import { useUserStore } from "../entities/user"
 // Features
 import {
   usePostList,
-  usePostSearch,
   useTagFilter,
   usePostCreate,
   usePostUpdate,
   usePostDelete,
   usePostFilters,
-  usePostPagination,
   usePostCreateModal,
   usePostEditModal,
   usePostDetailModal,
@@ -39,27 +37,19 @@ import { UserModal } from "../widgets/user-modal"
 
 // Types
 import type { Comment } from "../entities/comment"
+import type { Post } from "../entities/post"
 
 const PostsManagerPage = () => {
   // Store에서 상태 가져오기
-  const { posts, total, loading, error } = usePostStore()
+  const { error } = usePostStore()
   const { comments } = useCommentStore()
   const { selectedUser } = useUserStore()
 
-  // 필터 및 페이지네이션
+  // 필터
   const filters = usePostFilters()
-  const pagination = usePostPagination(
-    filters.skip,
-    filters.limit,
-    total,
-    filters.setSkip,
-    filters.setLimit,
-    filters.syncURL
-  )
 
   // Features hooks
   const { fetchPosts } = usePostList()
-  const { searchPosts } = usePostSearch()
   const { getTags, getPostsByTag } = useTagFilter()
   const { createPost } = usePostCreate()
   const { updatePost } = usePostUpdate()
@@ -97,16 +87,6 @@ const PostsManagerPage = () => {
     filters.syncURL()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.skip, filters.limit, filters.selectedTag])
-
-  // 검색 실행
-  const handleSearch = async () => {
-    if (!filters.searchQuery.trim()) {
-      fetchPosts(filters.limit, filters.skip)
-      return
-    }
-    await searchPosts(filters.searchQuery)
-    filters.syncURL()
-  }
 
   // 태그 변경
   const handleTagChange = async (tag: string) => {
@@ -160,13 +140,13 @@ const PostsManagerPage = () => {
   }
 
   // 게시물 상세 보기
-  const handlePostDetail = (post: typeof posts[0]) => {
+  const handlePostDetail = (post: Post) => {
     postDetailModal.openModal(post)
     fetchComments(post.id)
   }
 
   // 게시물 수정 모달 열기
-  const handleEditPost = (post: typeof posts[0]) => {
+  const handleEditPost = (post: Post) => {
     postEditModal.openModal(post)
   }
 
@@ -215,7 +195,7 @@ const PostsManagerPage = () => {
   }
 
   // 사용자 모달 열기
-  const handleUserClick = async (author: typeof posts[0]["author"]) => {
+  const handleUserClick = async (author: Post["author"]) => {
     if (!author) return
     try {
       await fetchUser(author.id)
@@ -224,9 +204,6 @@ const PostsManagerPage = () => {
       console.error("사용자 정보 가져오기 오류:", error)
     }
   }
-
-  // 정렬된 게시물 목록
-  const sortedPosts = filters.sortPosts(posts)
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
@@ -243,29 +220,12 @@ const PostsManagerPage = () => {
         <div className="flex flex-col gap-4">
           {/* 게시물 목록 위젯 */}
           <PostList
-            posts={sortedPosts}
             tags={tags}
-            loading={loading}
-            searchQuery={filters.searchQuery}
-            selectedTag={filters.selectedTag}
-            sortBy={filters.sortBy}
-            sortOrder={filters.sortOrder}
-            skip={filters.skip}
-            limit={filters.limit}
-            total={total}
-            onSearchChange={filters.setSearchQuery}
-            onSearch={handleSearch}
-            onTagChange={handleTagChange}
-            onSortByChange={filters.setSortBy}
-            onSortOrderChange={filters.setSortOrder}
-            onLimitChange={pagination.handleLimitChange}
-            onPrevPage={pagination.handlePrevPage}
-            onNextPage={pagination.handleNextPage}
             onPostDetail={handlePostDetail}
             onPostEdit={handleEditPost}
             onPostDelete={handleDeletePost}
             onUserClick={handleUserClick}
-            onTagClick={handleTagChange}
+            onTagChange={handleTagChange}
           />
 
           {/* 에러 표시 */}
