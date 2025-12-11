@@ -1,5 +1,6 @@
 import { Plus, ThumbsUp, Edit2, Trash2 } from "lucide-react"
 import type { Comment } from '../../../entities/comment'
+import { highlightText } from '../../../shared/lib'
 import { Button } from "../../../shared/ui"
 
 interface CommentListProps {
@@ -25,23 +26,6 @@ export const CommentList = ({
   onEditComment,
   onDeleteComment,
 }: CommentListProps) => {
-  // 검색어 하이라이트
-  const highlightText = (text: string, highlight: string) => {
-    if (!text) return null
-    if (!highlight.trim()) {
-      return <span>{text}</span>
-    }
-    const regex = new RegExp(`(${highlight})`, "gi")
-    const parts = text.split(regex)
-    return (
-      <span>
-        {parts.map((part, i) =>
-          regex.test(part) ? <mark key={i}>{part}</mark> : <span key={i}>{part}</span>
-        )}
-      </span>
-    )
-  }
-
   return (
     <div className="mt-2">
       <div className="flex items-center justify-between mb-2">

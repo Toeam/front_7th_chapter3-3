@@ -1,6 +1,7 @@
 import { Search, ThumbsDown, ThumbsUp, MessageSquare, Edit2, Trash2 } from "lucide-react"
 import type { Post, Tag } from '../../../entities/post'
 import type { SortBy, SortOrder } from '../../../features/post'
+import { highlightText } from '../../../shared/lib'
 import {
   Button,
   Input,
@@ -81,23 +82,6 @@ export const PostList = ({
   onUserClick,
   onTagClick,
 }: PostListProps) => {
-  // 검색어 하이라이트
-  const highlightText = (text: string, highlight: string) => {
-    if (!text) return null
-    if (!highlight.trim()) {
-      return <span>{text}</span>
-    }
-    const regex = new RegExp(`(${highlight})`, "gi")
-    const parts = text.split(regex)
-    return (
-      <span>
-        {parts.map((part, i) =>
-          regex.test(part) ? <mark key={i}>{part}</mark> : <span key={i}>{part}</span>
-        )}
-      </span>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {/* 검색 및 필터 컨트롤 */}

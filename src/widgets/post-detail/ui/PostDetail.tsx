@@ -1,6 +1,7 @@
 import type { Post } from '../../../entities/post'
 import type { Comment } from '../../../entities/comment'
 import { CommentList } from '../../comment-list'
+import { highlightText } from '../../../shared/lib'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui"
 
 interface PostDetailProps {
@@ -30,23 +31,6 @@ export const PostDetail = ({
   onEditComment,
   onDeleteComment,
 }: PostDetailProps) => {
-  // 검색어 하이라이트
-  const highlightText = (text: string, highlight: string) => {
-    if (!text) return null
-    if (!highlight.trim()) {
-      return <span>{text}</span>
-    }
-    const regex = new RegExp(`(${highlight})`, "gi")
-    const parts = text.split(regex)
-    return (
-      <span>
-        {parts.map((part, i) =>
-          regex.test(part) ? <mark key={i}>{part}</mark> : <span key={i}>{part}</span>
-        )}
-      </span>
-    )
-  }
-
   if (!post) return null
 
   return (
