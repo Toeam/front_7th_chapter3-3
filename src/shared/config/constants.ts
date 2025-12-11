@@ -13,3 +13,9 @@ export const SORT = {
   DEFAULT_SORT_ORDER: 'asc' as const,
 } as const
 
+/**
+ * API Base URL
+ * 개발 환경에서는 Vite 프록시를 사용하고, 프로덕션에서는 직접 API를 호출합니다.
+ */
+export const API_BASE_URL = import.meta.env.DEV ? '/api' : 'https://dummyjson.com'
+

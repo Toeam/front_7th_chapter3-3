@@ -1,4 +1,5 @@
 import type { User } from '../model/types'
+import { API_BASE_URL } from '../../../shared/config'
 
 export interface UsersResponse {
   users: User[]
@@ -25,7 +26,7 @@ export const userApi = {
     if (params?.skip !== undefined) queryParams.set('skip', params.skip.toString())
     if (params?.select) queryParams.set('select', params.select)
 
-    const response = await fetch(`/api/users?${queryParams.toString()}`)
+    const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`)
     if (!response.ok) {
       throw new Error('Failed to fetch users')
     }
@@ -34,7 +35,7 @@ export const userApi = {
 
   // 사용자 단건 조회
   getUser: async (id: number): Promise<User> => {
-    const response = await fetch(`/api/users/${id}`)
+    const response = await fetch(`${API_BASE_URL}/users/${id}`)
     if (!response.ok) {
       throw new Error(`Failed to fetch user: ${id}`)
     }

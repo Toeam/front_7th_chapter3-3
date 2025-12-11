@@ -1,4 +1,5 @@
 import type { Post } from '../model/types'
+import { API_BASE_URL } from '../../../shared/config'
 
 export interface CreatePostDto {
   title: string
@@ -26,7 +27,7 @@ export interface Tag {
 export const postApi = {
   // 게시물 목록 조회
   getPosts: async (limit: number, skip: number): Promise<PostsResponse> => {
-    const response = await fetch(`/api/posts?limit=${limit}&skip=${skip}`)
+    const response = await fetch(`${API_BASE_URL}/posts?limit=${limit}&skip=${skip}`)
     if (!response.ok) {
       throw new Error('Failed to fetch posts')
     }
@@ -35,7 +36,7 @@ export const postApi = {
 
   // 게시물 단건 조회
   getPost: async (id: number): Promise<Post> => {
-    const response = await fetch(`/api/posts/${id}`)
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`)
     if (!response.ok) {
       throw new Error(`Failed to fetch post: ${id}`)
     }
@@ -44,7 +45,7 @@ export const postApi = {
 
   // 게시물 생성
   createPost: async (post: CreatePostDto): Promise<Post> => {
-    const response = await fetch("/api/posts/add", {
+    const response = await fetch(`${API_BASE_URL}/posts/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(post),
@@ -57,7 +58,7 @@ export const postApi = {
 
   // 게시물 수정
   updatePost: async (id: number, post: UpdatePostDto): Promise<Post> => {
-    const response = await fetch(`/api/posts/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(post),
@@ -70,7 +71,7 @@ export const postApi = {
 
   // 게시물 삭제
   deletePost: async (id: number): Promise<void> => {
-    const response = await fetch(`/api/posts/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: "DELETE",
     })
     if (!response.ok) {
@@ -80,7 +81,7 @@ export const postApi = {
 
   // 게시물 검색
   searchPosts: async (query: string): Promise<PostsResponse> => {
-    const response = await fetch(`/api/posts/search?q=${query}`)
+    const response = await fetch(`${API_BASE_URL}/posts/search?q=${query}`)
     if (!response.ok) {
       throw new Error('Failed to search posts')
     }
@@ -89,7 +90,7 @@ export const postApi = {
 
   // 태그별 게시물 조회
   getPostsByTag: async (tag: string): Promise<PostsResponse> => {
-    const response = await fetch(`/api/posts/tag/${tag}`)
+    const response = await fetch(`${API_BASE_URL}/posts/tag/${tag}`)
     if (!response.ok) {
       throw new Error(`Failed to fetch posts by tag: ${tag}`)
     }
@@ -98,7 +99,7 @@ export const postApi = {
 
   // 태그 목록 조회
   getTags: async (): Promise<Tag[]> => {
-    const response = await fetch("/api/posts/tags")
+    const response = await fetch(`${API_BASE_URL}/posts/tags`)
     if (!response.ok) {
       throw new Error('Failed to fetch tags')
     }
