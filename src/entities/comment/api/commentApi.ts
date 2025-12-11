@@ -1,84 +1,87 @@
-  // 댓글 가져오기
-  const fetchComments = async (postId) => {
-    if (comments[postId]) return // 이미 불러온 댓글이 있으면 다시 불러오지 않음
-    try {
-      const response = await fetch(`/api/comments/post/${postId}`)
-      const data = await response.json()
-      setComments((prev) => ({ ...prev, [postId]: data.comments }))
-    } catch (error) {
-      console.error("댓글 가져오기 오류:", error)
-    }
-  }
+import type { Comment } from '../model/types'
 
-  // 댓글 추가
-  const addComment = async () => {
-    try {
-      const response = await fetch("/api/comments/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newComment),
-      })
-      const data = await response.json()
-      setComments((prev) => ({
-        ...prev,
-        [data.postId]: [...(prev[data.postId] || []), data],
-      }))
-      setShowAddCommentDialog(false)
-      setNewComment({ body: "", postId: null, userId: 1 })
-    } catch (error) {
-      console.error("댓글 추가 오류:", error)
-    }
-  }
+export interface CreateCommentDto {
+  body: string
+  postId: number
+  userId: number
+}
 
-  // 댓글 업데이트
-  const updateComment = async () => {
-    try {
-      const response = await fetch(`/api/comments/${selectedComment.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: selectedComment.body }),
-      })
-      const data = await response.json()
-      setComments((prev) => ({
-        ...prev,
-        [data.postId]: prev[data.postId].map((comment) => (comment.id === data.id ? data : comment)),
-      }))
-      setShowEditCommentDialog(false)
-    } catch (error) {
-      console.error("댓글 업데이트 오류:", error)
+export interface UpdateCommentDto {
+  body?: string
+}
+
+export interface CommentsResponse {
+  comments: Comment[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export const commentApi = {
+  // 댓글 목록 조회 (게시물별)
+  getCommentsByPost: async (postId: number): Promise<CommentsResponse> => {
+    const response = await fetch(`/api/comments/post/${postId}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch comments for post: ${postId}`)
     }
-  }
+    return response.json()
+  },
+
+  // 댓글 단건 조회
+  getComment: async (id: number): Promise<Comment> => {
+    const response = await fetch(`/api/comments/${id}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch comment: ${id}`)
+    }
+    return response.json()
+  },
+
+  // 댓글 생성
+  createComment: async (comment: CreateCommentDto): Promise<Comment> => {
+    const response = await fetch("/api/comments/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(comment),
+    })
+    if (!response.ok) {
+      throw new Error('Failed to create comment')
+    }
+    return response.json()
+  },
+
+  // 댓글 수정
+  updateComment: async (id: number, comment: UpdateCommentDto): Promise<Comment> => {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(comment),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to update comment: ${id}`)
+    }
+    return response.json()
+  },
 
   // 댓글 삭제
-  const deleteComment = async (id, postId) => {
-    try {
-      await fetch(`/api/comments/${id}`, {
-        method: "DELETE",
-      })
-      setComments((prev) => ({
-        ...prev,
-        [postId]: prev[postId].filter((comment) => comment.id !== id),
-      }))
-    } catch (error) {
-      console.error("댓글 삭제 오류:", error)
+  deleteComment: async (id: number): Promise<void> => {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: "DELETE",
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to delete comment: ${id}`)
     }
-  }
+  },
 
   // 댓글 좋아요
-  const likeComment = async (id, postId) => {
-    try {
-
-      const response = await fetch(`/api/comments/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ likes: comments[postId].find((c) => c.id === id).likes + 1 }),
-      })
-      const data = await response.json()
-      setComments((prev) => ({
-        ...prev,
-        [postId]: prev[postId].map((comment) => (comment.id === data.id ? {...data, likes: comment.likes + 1} : comment)),
-      }))
-    } catch (error) {
-      console.error("댓글 좋아요 오류:", error)
+  likeComment: async (id: number, likes: number): Promise<Comment> => {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ likes }),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to like comment: ${id}`)
     }
-  }
+    return response.json()
+  },
+}

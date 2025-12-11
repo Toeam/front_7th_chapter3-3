@@ -1,32 +1,23 @@
-import { postApi, usePostStore, type CreatePostDto, type Post } from '../../../entities/post'
+import { usePostStore, type CreatePostDto, type Post } from '../../../entities/post'
 
+/**
+ * 게시물 생성 기능
+ * Store의 createPost를 사용하여 API 호출과 상태 관리를 처리합니다.
+ * 추가적인 비즈니스 로직(검증, 변환 등)이 필요한 경우 여기에 작성합니다.
+ */
 export const usePostCreate = () => {
-  const { addPost, setLoading, setError } = usePostStore()
+  const { createPost: createPostInStore } = usePostStore()
 
   const createPost = async (
     post: CreatePostDto,
     onSuccess?: (createdPost: Post) => void
   ): Promise<Post> => {
-    setLoading(true)
-    setError(null)
-    
     try {
-      // API 호출
-      const createdPost = await postApi.createPost(post)
-      
-      // Store 업데이트 (비즈니스 로직)
-      addPost(createdPost)
-      
-      setLoading(false)
+      // Store의 createPost 호출 (API 호출 + 상태 관리)
+      const createdPost = await createPostInStore(post)
       onSuccess?.(createdPost)
       return createdPost
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : '게시물 생성에 실패했습니다'
-      
-      setError(errorMessage)
-      setLoading(false)
       console.error("게시물 추가 오류:", error)
       throw error
     }

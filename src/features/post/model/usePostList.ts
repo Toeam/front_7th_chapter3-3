@@ -1,38 +1,23 @@
-import { postApi, usePostStore, type Tag, type Post, type PostAuthor } from '../../../entities/post'
+import { usePostStore } from '../../../entities/post'
 import { userApi } from '../../../entities/user'
+import type { Post, PostAuthor } from '../../../entities/post'
 
 /**
- * 태그 필터링 기능
- * getTags: 태그 목록 조회 (단순 조회, 상태 관리 불필요)
- * getPostsByTag: Store의 getPostsByTag를 호출하고, users API를 함께 호출하여 author 정보를 매핑합니다.
+ * 게시물 목록 조회 기능
+ * Store의 fetchPosts를 호출하고, users API를 함께 호출하여 author 정보를 매핑합니다.
  * (기획 변경에 영향받는 로직이므로 Features에 위치)
  */
-export const useTagFilter = () => {
-  const { getPostsByTag: getPostsByTagInStore, setPosts, setLoading, setError } = usePostStore()
+export const usePostList = () => {
+  const { fetchPosts: fetchPostsInStore, setPosts, setLoading, setError } = usePostStore()
 
-  const getTags = async (onSuccess?: (tags: Tag[]) => void): Promise<Tag[]> => {
-    try {
-      const tags = await postApi.getTags()
-      onSuccess?.(tags)
-      return tags
-    } catch (error) {
-      console.error("태그 가져오기 오류:", error)
-      throw error
-    }
-  }
-
-  const getPostsByTag = async (tag: string) => {
-    if (!tag || tag === "all") {
-      throw new Error('태그를 선택해주세요')
-    }
-
+  const fetchPosts = async (limit: number, skip: number) => {
     setLoading(true)
     setError(null)
 
     try {
       // 게시물과 사용자 정보를 병렬로 가져오기
       const [postsResponse, usersResponse] = await Promise.all([
-        getPostsByTagInStore(tag), // Store에서 Post API 호출
+        fetchPostsInStore(limit, skip), // Store에서 Post API 호출
         userApi.getUsers({ limit: 0, select: 'username,image' }), // User API 호출
       ])
 
@@ -59,15 +44,15 @@ export const useTagFilter = () => {
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 
-        : '태그별 게시물 조회에 실패했습니다'
+        : '게시물을 불러오는데 실패했습니다'
       
       setError(errorMessage)
       setLoading(false)
-      console.error("태그별 게시물 가져오기 오류:", error)
+      console.error("게시물 가져오기 오류:", error)
       throw error
     }
   }
 
-  return { getTags, getPostsByTag }
+  return { fetchPosts }
 }
 

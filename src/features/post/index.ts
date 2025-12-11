@@ -4,6 +4,7 @@ export { usePostUpdate } from './model/usePostUpdate'
 export { usePostSearch } from './model/usePostSearch'
 export { usePostSort } from './model/usePostSort'
 export { useTagFilter } from './model/useTagFilter'
+export { usePostList } from './model/usePostList'
 
 export type { SortBy, SortOrder } from './model/usePostSort'
 
