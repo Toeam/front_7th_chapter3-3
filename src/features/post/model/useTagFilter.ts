@@ -1,44 +1,39 @@
-import { postApi, usePostStore, type Tag, type Post, type PostAuthor } from '../../../entities/post'
-import { userApi } from '../../../entities/user'
+import { useQuery } from '@tanstack/react-query'
+import { postApi } from '../../../entities/post/api'
+import { userApi } from '../../../entities/user/api'
+import { postKeys, userKeys } from '../../../shared/lib'
+import type { Post, PostAuthor } from '../../../entities/post'
 
 /**
- * 태그 필터링 기능
- * getTags: 태그 목록 조회 (단순 조회, 상태 관리 불필요)
- * getPostsByTag: Store의 getPostsByTag를 호출하고, users API를 함께 호출하여 author 정보를 매핑합니다.
- * (기획 변경에 영향받는 로직이므로 Features에 위치)
+ * 태그 필터 기능
  */
-export const useTagFilter = () => {
-  const { getPostsByTag: getPostsByTagInStore, setPosts, setLoading, setError } = usePostStore()
+export const useTags = () => {
+  return useQuery({
+    queryKey: postKeys.tags(),
+    queryFn: () => postApi.getTags(),
+  })
+}
 
-  const getTags = async (onSuccess?: (tags: Tag[]) => void): Promise<Tag[]> => {
-    try {
-      const tags = await postApi.getTags()
-      onSuccess?.(tags)
-      return tags
-    } catch (error) {
-      console.error("태그 가져오기 오류:", error)
-      throw error
-    }
-  }
+export const usePostsByTag = (tag: string) => {
+  // 태그별 게시물 조회
+  const postsQuery = useQuery({
+    queryKey: postKeys.byTag(tag),
+    queryFn: () => postApi.getPostsByTag(tag),
+    enabled: tag !== 'all' && tag.length > 0, // 'all'이 아니고 태그가 있을 때만 실행
+    refetchOnMount: true, // 컴포넌트 마운트 시 항상 리프레시
+  })
 
-  const getPostsByTag = async (tag: string) => {
-    if (!tag || tag === "all") {
-      throw new Error('태그를 선택해주세요')
-    }
+  // 사용자 정보 조회 (author 매핑용)
+  const usersQuery = useQuery({
+    queryKey: userKeys.list({ limit: 0, select: 'username,image' }),
+    queryFn: () => userApi.getUsers({ limit: 0, select: 'username,image' }),
+    enabled: postsQuery.isSuccess, // 게시물 조회 성공 시에만 실행
+  })
 
-    setLoading(true)
-    setError(null)
-
-    try {
-      // 게시물과 사용자 정보를 병렬로 가져오기
-      const [postsResponse, usersResponse] = await Promise.all([
-        getPostsByTagInStore(tag), // Store에서 Post API 호출
-        userApi.getUsers({ limit: 0, select: 'username,image' }), // User API 호출
-      ])
-
-      // author 정보 매핑 (비즈니스 로직)
-      const postsWithAuthors: Post[] = postsResponse.posts.map((post) => {
-        const user = usersResponse.users.find((u) => u.id === post.userId)
+  // author 정보 매핑 (비즈니스 로직)
+  const postsWithAuthors: Post[] | undefined = postsQuery.data && usersQuery.data
+    ? postsQuery.data.posts.map((post) => {
+        const user = usersQuery.data.users.find((u) => u.id === post.userId)
         const author: PostAuthor | undefined = user
           ? {
               id: user.id,
@@ -52,22 +47,18 @@ export const useTagFilter = () => {
           author,
         }
       })
+    : undefined
 
-      // Store에 매핑된 결과 저장
-      setPosts(postsWithAuthors)
-      setLoading(false)
-    } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : '태그별 게시물 조회에 실패했습니다'
-      
-      setError(errorMessage)
-      setLoading(false)
-      console.error("태그별 게시물 가져오기 오류:", error)
-      throw error
-    }
+  return {
+    data: postsWithAuthors
+      ? {
+          ...postsQuery.data,
+          posts: postsWithAuthors,
+        }
+      : undefined,
+    isLoading: postsQuery.isLoading || usersQuery.isLoading,
+    isError: postsQuery.isError || usersQuery.isError,
+    error: postsQuery.error || usersQuery.error,
+    refetch: postsQuery.refetch,
   }
-
-  return { getTags, getPostsByTag }
 }
-

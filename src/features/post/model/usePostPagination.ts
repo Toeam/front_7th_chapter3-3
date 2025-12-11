@@ -10,24 +10,27 @@ export const usePostPagination = (
   total: number,
   setSkip: (skip: number) => void,
   setLimit: (limit: number) => void,
-  syncURL: () => void
+  syncURL: (params?: { skip?: number; limit?: number }) => void
 ) => {
   const handleLimitChange = (newLimit: number) => {
     setLimit(newLimit)
     setSkip(0)
-    syncURL()
+    // 최신 값을 직접 전달하여 URL 동기화
+    syncURL({ skip: 0, limit: newLimit })
   }
 
   const handlePrevPage = () => {
     const newSkip = Math.max(0, skip - limit)
     setSkip(newSkip)
-    syncURL()
+    // 최신 값을 직접 전달하여 URL 동기화
+    syncURL({ skip: newSkip })
   }
 
   const handleNextPage = () => {
     const newSkip = skip + limit
     setSkip(newSkip)
-    syncURL()
+    // 최신 값을 직접 전달하여 URL 동기화
+    syncURL({ skip: newSkip })
   }
 
   const canGoPrev = skip > 0

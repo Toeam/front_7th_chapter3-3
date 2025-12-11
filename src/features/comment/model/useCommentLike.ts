@@ -1,38 +1,57 @@
-import { useCommentStore, type Comment } from '../../../entities/comment'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { commentApi } from '../../../entities/comment/api'
+import { commentKeys } from '../../../shared/lib'
+import type { Comment } from '../../../entities/comment'
 
 /**
  * 댓글 좋아요 기능
- * Store의 likeComment를 사용하여 API 호출과 상태 관리를 처리합니다.
+ * 낙관적 업데이트를 적용합니다.
  */
 export const useCommentLike = () => {
-  const { likeComment: likeCommentInStore, comments } = useCommentStore()
+  const queryClient = useQueryClient()
 
-  const likeComment = async (
-    id: number,
-    postId: number,
-    onSuccess?: (updatedComment: Comment) => void
-  ): Promise<Comment> => {
-    try {
-      // 현재 좋아요 수 가져오기
-      const currentComment = comments[postId]?.find((c) => c.id === id)
-      if (!currentComment) {
-        throw new Error('댓글을 찾을 수 없습니다')
-      }
+  return useMutation({
+    mutationFn: ({ id, likes, postId }: { id: number; likes: number; postId: number }) =>
+      commentApi.likeComment(id, likes),
+    // 낙관적 업데이트: 서버 응답 전에 UI 업데이트
+    onMutate: async ({ id, likes, postId }) => {
+      // 진행 중인 쿼리 취소
+      await queryClient.cancelQueries({ queryKey: commentKeys.list(postId) })
 
-      // Store의 likeComment 호출 (API 호출 + 상태 관리)
-      const updatedComment = await likeCommentInStore(
-        id,
-        postId,
-        currentComment.likes
+      // 이전 데이터 백업
+      const previousComments = queryClient.getQueryData<{ comments: Comment[] }>(
+        commentKeys.list(postId)
       )
-      onSuccess?.(updatedComment)
-      return updatedComment
-    } catch (error) {
-      console.error("댓글 좋아요 오류:", error)
-      throw error
-    }
-  }
 
-  return { likeComment }
+      // 낙관적 업데이트: 즉시 좋아요 수 증가
+      queryClient.setQueryData<{ comments: Comment[] }>(
+        commentKeys.list(postId),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            comments: old.comments.map((comment) =>
+              comment.id === id ? { ...comment, likes: likes + 1 } : comment
+            ),
+          }
+        }
+      )
+
+      return { previousComments }
+    },
+    // 에러 발생 시 롤백
+    onError: (error, variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          commentKeys.list(variables.postId),
+          context.previousComments
+        )
+      }
+      console.error('댓글 좋아요 오류:', error)
+    },
+    // 성공 시 쿼리 무효화
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: commentKeys.list(variables.postId) })
+    },
+  })
 }
-

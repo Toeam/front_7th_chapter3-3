@@ -23,14 +23,24 @@ export const usePostFilters = () => {
   const [selectedTag, setSelectedTag] = useState(() => getStringParam(location.search, "tag"))
 
   // URL 파라미터 동기화
-  const syncURL = () => {
+  const syncURL = (overrideParams?: {
+    skip?: number
+    limit?: number
+    search?: string | null
+    tag?: string | null
+  }) => {
+    const finalSkip = overrideParams?.skip ?? skip
+    const finalLimit = overrideParams?.limit ?? limit
+    const finalSearch = overrideParams?.search !== undefined ? overrideParams.search : (searchQuery || null)
+    const finalTag = overrideParams?.tag !== undefined ? overrideParams.tag : (selectedTag || null)
+    
     updateURL(navigate, location.pathname, {
-      skip,
-      limit,
-      search: searchQuery || null,
+      skip: finalSkip,
+      limit: finalLimit,
+      search: finalSearch,
       sortBy: sort.sortBy !== "none" ? sort.sortBy : null,
       sortOrder: sort.sortOrder !== "asc" ? sort.sortOrder : null,
-      tag: selectedTag || null,
+      tag: finalTag,
     })
   }
 
@@ -43,13 +53,19 @@ export const usePostFilters = () => {
     const urlSortOrder = getStringParam(location.search, "sortOrder", SORT.DEFAULT_SORT_ORDER)
     const tagValue = getStringParam(location.search, "tag")
     
-    setSkip(skipValue)
-    setLimit(limitValue)
-    setSearchQuery(searchValue)
-    if (urlSortBy) sort.setSortBy(urlSortBy as typeof sort.sortBy)
-    if (urlSortOrder) sort.setSortOrder(urlSortOrder as typeof sort.sortOrder)
-    setSelectedTag(tagValue)
-  }, [location.search, sort])
+    // 상태가 실제로 변경된 경우에만 업데이트 (불필요한 리렌더링 방지)
+    if (skipValue !== skip) setSkip(skipValue)
+    if (limitValue !== limit) setLimit(limitValue)
+    if (searchValue !== searchQuery) setSearchQuery(searchValue)
+    if (tagValue !== selectedTag) setSelectedTag(tagValue)
+    
+    if (urlSortBy && urlSortBy !== sort.sortBy) {
+      sort.setSortBy(urlSortBy as typeof sort.sortBy)
+    }
+    if (urlSortOrder && urlSortOrder !== sort.sortOrder) {
+      sort.setSortOrder(urlSortOrder as typeof sort.sortOrder)
+    }
+  }, [location.search]) // sort 객체를 의존성에서 제거하여 무한 루프 방지
 
   return {
     // 상태

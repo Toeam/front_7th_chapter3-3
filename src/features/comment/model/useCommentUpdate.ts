@@ -1,28 +1,23 @@
-import { useCommentStore, type UpdateCommentDto, type Comment } from '../../../entities/comment'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { commentApi, type UpdateCommentDto } from '../../../entities/comment/api'
+import { commentKeys } from '../../../shared/lib'
+import type { Comment } from '../../../entities/comment'
 
 /**
  * 댓글 수정 기능
- * Store의 updateComment를 사용하여 API 호출과 상태 관리를 처리합니다.
  */
 export const useCommentUpdate = () => {
-  const { updateComment: updateCommentInStore } = useCommentStore()
+  const queryClient = useQueryClient()
 
-  const updateComment = async (
-    id: number,
-    comment: UpdateCommentDto,
-    onSuccess?: (updatedComment: Comment) => void
-  ): Promise<Comment> => {
-    try {
-      // Store의 updateComment 호출 (API 호출 + 상태 관리)
-      const updatedComment = await updateCommentInStore(id, comment)
-      onSuccess?.(updatedComment)
-      return updatedComment
-    } catch (error) {
-      console.error("댓글 업데이트 오류:", error)
-      throw error
-    }
-  }
-
-  return { updateComment }
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: number; comment: UpdateCommentDto }) =>
+      commentApi.updateComment(id, comment),
+    onSuccess: (data) => {
+      // 해당 게시물의 댓글 목록 쿼리 무효화
+      queryClient.invalidateQueries({ queryKey: commentKeys.list(data.postId) })
+    },
+    onError: (error) => {
+      console.error('댓글 수정 오류:', error)
+    },
+  })
 }
-

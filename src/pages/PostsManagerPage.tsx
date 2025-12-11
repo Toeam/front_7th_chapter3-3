@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Plus } from "lucide-react"
 import { Button, Card, CardContent, CardHeader, CardTitle } from "../shared/ui"
-
-// Entities - Store
-import { usePostStore } from "../entities/post"
-import { useCommentStore } from "../entities/comment"
-import { useUserStore } from "../entities/user"
 
 // Features
 import {
   usePostList,
-  useTagFilter,
+  useTags,
+  usePostsByTag,
+  usePostSearch,
   usePostCreate,
   usePostUpdate,
   usePostDelete,
@@ -40,26 +37,8 @@ import type { Comment } from "../entities/comment"
 import type { Post } from "../entities/post"
 
 const PostsManagerPage = () => {
-  // Store에서 상태 가져오기
-  const { error } = usePostStore()
-  const { comments } = useCommentStore()
-  const { selectedUser } = useUserStore()
-
   // 필터
   const filters = usePostFilters()
-
-  // Features hooks
-  const { fetchPosts } = usePostList()
-  const { getTags, getPostsByTag } = useTagFilter()
-  const { createPost } = usePostCreate()
-  const { updatePost } = usePostUpdate()
-  const { deletePost } = usePostDelete()
-  const { fetchComments } = useCommentList()
-  const { createComment } = useCommentCreate()
-  const { updateComment } = useCommentUpdate()
-  const { deleteComment } = useCommentDelete()
-  const { likeComment } = useCommentLike()
-  const { fetchUser } = useUserDetail()
 
   // 모달 관리
   const postCreateModal = usePostCreateModal()
@@ -67,82 +46,106 @@ const PostsManagerPage = () => {
   const postDetailModal = usePostDetailModal()
   const userModal = useUserModal()
 
+  // 선택된 사용자 ID (모달이 열릴 때 설정)
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+
+  // Query hooks - 선언적 방식
+  // 검색 쿼리 (검색어가 있을 때)
+  const searchQuery = usePostSearch(filters.searchQuery)
+
+  // 게시물 목록 (태그가 'all'이거나 없을 때, 검색어도 없을 때)
+  const postListQuery = usePostList(
+    filters.limit,
+    filters.skip
+  )
+
+  // 태그별 게시물 (태그가 선택되었을 때)
+  const postsByTagQuery = usePostsByTag(filters.selectedTag || '')
+
   // 태그 목록
-  const [tags, setTags] = useState<Array<{ url: string; slug: string }>>([])
+  const tagsQuery = useTags()
 
-  // 태그 가져오기
-  useEffect(() => {
-    getTags((tags) => {
-      setTags(tags)
-    })
-  }, [getTags])
+  // 댓글 목록 (게시물 상세 모달이 열렸을 때)
+  const commentListQuery = useCommentList(
+    postDetailModal.selectedPost?.id || 0
+  )
 
-  // 게시물 가져오기 (skip, limit, selectedTag 변경 시)
-  useEffect(() => {
-    if (filters.selectedTag && filters.selectedTag !== "all") {
-      getPostsByTag(filters.selectedTag)
-    } else {
-      fetchPosts(filters.limit, filters.skip)
-    }
-    filters.syncURL()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.skip, filters.limit, filters.selectedTag])
+  // 사용자 상세 (사용자 모달이 열렸을 때)
+  const userDetailQuery = useUserDetail(selectedUserId || 0)
+
+  // 현재 표시할 게시물 데이터 결정
+  // 우선순위: 검색어 > 태그 필터 > 일반 목록
+  const currentPosts = filters.searchQuery?.trim()
+    ? searchQuery.data?.posts ?? []
+    : filters.selectedTag && filters.selectedTag !== 'all'
+    ? postsByTagQuery.data?.posts ?? []
+    : postListQuery.posts
+
+  const isLoadingPosts = filters.searchQuery?.trim()
+    ? searchQuery.isLoading
+    : filters.selectedTag && filters.selectedTag !== 'all'
+    ? postsByTagQuery.isLoading
+    : postListQuery.isLoading
+
+  // Mutation hooks
+  const createPostMutation = usePostCreate()
+  const updatePostMutation = usePostUpdate()
+  const deletePostMutation = usePostDelete()
+  const createCommentMutation = useCommentCreate()
+  const updateCommentMutation = useCommentUpdate()
+  const deleteCommentMutation = useCommentDelete()
+  const likeCommentMutation = useCommentLike()
 
   // 태그 변경
-  const handleTagChange = async (tag: string) => {
+  const handleTagChange = (tag: string) => {
     filters.setSelectedTag(tag)
-    if (tag === "all") {
-      await fetchPosts(filters.limit, filters.skip)
-    } else {
-      await getPostsByTag(tag)
-    }
     filters.syncURL()
   }
 
   // 게시물 생성
-  const handleCreatePost = async () => {
-    try {
-      await createPost(postCreateModal.formData, () => {
+  const handleCreatePost = () => {
+    createPostMutation.mutate(postCreateModal.formData, {
+      onSuccess: () => {
         postCreateModal.closeModal()
-        fetchPosts(filters.limit, filters.skip)
-      })
-    } catch (error) {
-      console.error("게시물 생성 오류:", error)
-    }
+      },
+      onError: (error) => {
+        console.error("게시물 생성 오류:", error)
+      },
+    })
   }
 
   // 게시물 수정
-  const handleUpdatePost = async () => {
+  const handleUpdatePost = () => {
     if (!postEditModal.editingPost) return
-    try {
-      await updatePost(
-        postEditModal.editingPost.id,
-        postEditModal.formData,
-        () => {
+
+    updatePostMutation.mutate(
+      {
+        id: postEditModal.editingPost.id,
+        post: postEditModal.formData,
+      },
+      {
+        onSuccess: () => {
           postEditModal.closeModal()
-          fetchPosts(filters.limit, filters.skip)
-        }
-      )
-    } catch (error) {
-      console.error("게시물 수정 오류:", error)
-    }
+        },
+        onError: (error) => {
+          console.error("게시물 수정 오류:", error)
+        },
+      }
+    )
   }
 
   // 게시물 삭제
-  const handleDeletePost = async (postId: number) => {
-    try {
-      await deletePost(postId, () => {
-        fetchPosts(filters.limit, filters.skip)
-      })
-    } catch (error) {
-      console.error("게시물 삭제 오류:", error)
-    }
+  const handleDeletePost = (postId: number) => {
+    deletePostMutation.mutate(postId, {
+      onError: (error) => {
+        console.error("게시물 삭제 오류:", error)
+      },
+    })
   }
 
   // 게시물 상세 보기
   const handlePostDetail = (post: Post) => {
     postDetailModal.openModal(post)
-    fetchComments(post.id)
   }
 
   // 게시물 수정 모달 열기
@@ -151,58 +154,75 @@ const PostsManagerPage = () => {
   }
 
   // 댓글 추가
-  const handleAddComment = async (postId: number) => {
-    try {
-      await createComment({ body: "", postId, userId: 1 }, () => {
-        fetchComments(postId)
-      })
-    } catch (error) {
-      console.error("댓글 추가 오류:", error)
-    }
+  const handleAddComment = () => {
+    if (!postDetailModal.selectedPost) return
+
+    createCommentMutation.mutate(
+      {
+        body: "",
+        postId: postDetailModal.selectedPost.id,
+        userId: 1,
+      },
+      {
+        onError: (error) => {
+          console.error("댓글 추가 오류:", error)
+        },
+      }
+    )
   }
 
   // 댓글 수정
-  const handleEditComment = async (comment: Comment) => {
-    try {
-      await updateComment(comment.id, { body: comment.body }, () => {
-        fetchComments(comment.postId)
-      })
-    } catch (error) {
-      console.error("댓글 수정 오류:", error)
-    }
+  const handleEditComment = (comment: Comment) => {
+    updateCommentMutation.mutate(
+      {
+        id: comment.id,
+        comment: { body: comment.body },
+      },
+      {
+        onError: (error) => {
+          console.error("댓글 수정 오류:", error)
+        },
+      }
+    )
   }
 
   // 댓글 삭제
-  const handleDeleteComment = async (commentId: number, postId: number) => {
-    try {
-      await deleteComment(commentId, postId, () => {
-        fetchComments(postId)
-      })
-    } catch (error) {
-      console.error("댓글 삭제 오류:", error)
-    }
+  const handleDeleteComment = (commentId: number, postId: number) => {
+    deleteCommentMutation.mutate(
+      { id: commentId, postId },
+      {
+        onError: (error) => {
+          console.error("댓글 삭제 오류:", error)
+        },
+      }
+    )
   }
 
   // 댓글 좋아요
-  const handleLikeComment = async (commentId: number, postId: number) => {
-    try {
-      await likeComment(commentId, postId, () => {
-        fetchComments(postId)
-      })
-    } catch (error) {
-      console.error("댓글 좋아요 오류:", error)
-    }
+  const handleLikeComment = (commentId: number, postId: number) => {
+    // 현재 댓글 찾기
+    const comment = commentListQuery.data?.comments.find((c) => c.id === commentId)
+    if (!comment) return
+
+    likeCommentMutation.mutate(
+      {
+        id: commentId,
+        likes: comment.likes,
+        postId,
+      },
+      {
+        onError: (error) => {
+          console.error("댓글 좋아요 오류:", error)
+        },
+      }
+    )
   }
 
   // 사용자 모달 열기
-  const handleUserClick = async (author: Post["author"]) => {
+  const handleUserClick = (author: Post["author"]) => {
     if (!author) return
-    try {
-      await fetchUser(author.id)
-      userModal.openModal()
-    } catch (error) {
-      console.error("사용자 정보 가져오기 오류:", error)
-    }
+    setSelectedUserId(author.id)
+    userModal.openModal()
   }
 
   return (
@@ -220,7 +240,9 @@ const PostsManagerPage = () => {
         <div className="flex flex-col gap-4">
           {/* 게시물 목록 위젯 */}
           <PostList
-            tags={tags}
+            tags={tagsQuery.data ?? []}
+            posts={currentPosts}
+            isLoading={isLoadingPosts}
             onPostDetail={handlePostDetail}
             onPostEdit={handleEditPost}
             onPostDelete={handleDeletePost}
@@ -229,9 +251,9 @@ const PostsManagerPage = () => {
           />
 
           {/* 에러 표시 */}
-          {error && (
+          {(postListQuery.isError || postsByTagQuery.isError || searchQuery.isError) && (
             <div className="p-4 bg-red-50 text-red-800 rounded-md">
-              {error}
+              {searchQuery.error?.message || postListQuery.error?.message || postsByTagQuery.error?.message || '게시물을 불러오는데 실패했습니다'}
             </div>
           )}
         </div>
@@ -263,11 +285,11 @@ const PostsManagerPage = () => {
       {/* 게시물 상세 모달 */}
       <PostDetail
         post={postDetailModal.selectedPost}
-        comments={postDetailModal.selectedPost ? comments[postDetailModal.selectedPost.id] || [] : []}
+        comments={commentListQuery.data?.comments ?? []}
         searchQuery={filters.searchQuery}
         isOpen={postDetailModal.isOpen}
         onClose={postDetailModal.closeModal}
-        onAddComment={() => postDetailModal.selectedPost && handleAddComment(postDetailModal.selectedPost.id)}
+        onAddComment={handleAddComment}
         onLikeComment={handleLikeComment}
         onEditComment={handleEditComment}
         onDeleteComment={handleDeleteComment}
@@ -277,7 +299,7 @@ const PostsManagerPage = () => {
       <UserModal
         isOpen={userModal.isOpen}
         onClose={userModal.closeModal}
-        user={selectedUser}
+        user={userDetailQuery.data || null}
       />
     </Card>
   )

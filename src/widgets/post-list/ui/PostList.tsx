@@ -1,5 +1,5 @@
+import { useMemo } from 'react'
 import type { Post } from '../../../entities/post'
-import { usePostStore } from '../../../entities/post'
 import { usePostFilters } from '../../../features/post'
 import { PostRow } from '../../../entities/post/ui'
 import { PostSearchInput, PostTagFilter, PostSortControls, PostPagination } from '../../../features/post/ui'
@@ -7,6 +7,8 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../../sha
 
 interface PostListProps {
   tags: Array<{ url: string; slug: string }>
+  posts: Post[]
+  isLoading?: boolean
   onPostDetail: (post: Post) => void
   onPostEdit: (post: Post) => void
   onPostDelete: (postId: number) => void
@@ -21,15 +23,17 @@ interface PostListProps {
  */
 export const PostList = ({
   tags,
+  posts,
+  isLoading = false,
   onPostDetail,
   onPostEdit,
   onPostDelete,
   onUserClick,
   onTagChange,
 }: PostListProps) => {
-  const { posts, loading } = usePostStore()
-  const { sortPosts, searchQuery, selectedTag } = usePostFilters()
-  const sortedPosts = sortPosts(posts)
+  const { sortPosts, searchQuery, selectedTag, sortBy, sortOrder } = usePostFilters()
+  // sortBy나 sortOrder가 변경되면 정렬이 다시 실행되도록 useMemo 사용
+  const sortedPosts = useMemo(() => sortPosts(posts), [posts, sortPosts, sortBy, sortOrder])
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,7 +45,7 @@ export const PostList = ({
       </div>
 
       {/* 게시물 테이블 */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center p-4">로딩 중...</div>
       ) : (
         <Table>

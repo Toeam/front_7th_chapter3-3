@@ -1,26 +1,58 @@
-import { usePostStore } from '../../../entities/post'
+import { useQuery } from '@tanstack/react-query'
+import { postApi } from '../../../entities/post/api'
+import { userApi } from '../../../entities/user/api'
+import { postKeys, userKeys } from '../../../shared/lib'
+import type { Post, PostAuthor } from '../../../entities/post'
 
 /**
  * 게시물 검색 기능
- * Store의 searchPosts를 사용하여 API 호출과 상태 관리를 처리합니다.
- * 추가적인 검색 로직(검색어 전처리 등)이 필요한 경우 여기에 작성합니다.
+ * 게시물과 사용자 정보를 병렬로 가져와서 author 정보를 매핑합니다.
  */
-export const usePostSearch = () => {
-  const { searchPosts: searchPostsInStore } = usePostStore()
+export const usePostSearch = (query: string | undefined) => {
+  // 게시물 검색
+  const postsQuery = useQuery({
+    queryKey: postKeys.search(query || ''),
+    queryFn: () => postApi.searchPosts(query || ''),
+    enabled: !!query && query.trim().length > 0, // 검색어가 있을 때만 실행
+    refetchOnMount: true, // 컴포넌트 마운트 시 항상 리프레시
+  })
 
-  const searchPosts = async (query: string) => {
-    if (!query.trim()) {
-      throw new Error('검색어를 입력해주세요')
-    }
+  // 사용자 정보 조회 (author 매핑용)
+  const usersQuery = useQuery({
+    queryKey: userKeys.list({ limit: 0, select: 'username,image' }),
+    queryFn: () => userApi.getUsers({ limit: 0, select: 'username,image' }),
+    enabled: postsQuery.isSuccess, // 게시물 조회 성공 시에만 실행
+  })
 
-    try {
-      // Store의 searchPosts 호출 (API 호출 + 상태 관리)
-      await searchPostsInStore(query)
-    } catch (error) {
-      console.error("게시물 검색 오류:", error)
-      throw error
-    }
+  // author 정보 매핑 (비즈니스 로직)
+  const postsWithAuthors: Post[] | undefined = postsQuery.data && usersQuery.data
+    ? postsQuery.data.posts.map((post) => {
+        const user = usersQuery.data.users.find((u) => u.id === post.userId)
+        const author: PostAuthor | undefined = user
+          ? {
+              id: user.id,
+              username: user.username,
+              image: user.image,
+            }
+          : undefined
+
+        return {
+          ...post,
+          author,
+        }
+      })
+    : undefined
+
+  return {
+    data: postsWithAuthors
+      ? {
+          ...postsQuery.data,
+          posts: postsWithAuthors,
+        }
+      : undefined,
+    isLoading: postsQuery.isLoading || usersQuery.isLoading,
+    isError: postsQuery.isError || usersQuery.isError,
+    error: postsQuery.error || usersQuery.error,
+    refetch: postsQuery.refetch,
   }
-
-  return { searchPosts }
 }
